@@ -41,3 +41,6 @@ pip-delete-this-directory.txt
 
 # Mac OS-specific storage files
 .DS_Store
+
+# vscode
+.vscode
