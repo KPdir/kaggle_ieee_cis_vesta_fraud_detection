@@ -1,7 +1,9 @@
 Kaggle: IEEE-CIS Vesta e-commerce fraud detection
 ==============================
 
-Detect fraud in e-commerce using transactional & web-analytics data. 
+
+This is a solution to the Kaggle competetion problem [IEEE-CIS Vesta Fraud Detection](https://www.kaggle.com/c/ieee-fraud-detection/). The objective was to detect e-commerce fraud using transactional & web-analytics data. This involved data-cleaning, exploratory analysis, feature generation and predictive modeling. This repository contains the code, project details and some samples of exploratory analysis that it entailed. For details, see the [project notebook](./notebooks/vesta_ieee_cis_ecommerce_fraud_detection.ipynb).
+
 
 Project Organization
 ------------
