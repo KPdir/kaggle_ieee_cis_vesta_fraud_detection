@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from src.features.build_features import create_category_interactions
+from src.utils import create_category_interactions
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import MinMaxScaler
 
