@@ -131,7 +131,7 @@ def plot_feature_importance(estimator, dftrain):
     minmax = MinMaxScaler()
 
     features = dftrain.columns
-    importances = minmax.fit_transform(clf.feature_importances_.reshape(-1,1)).reshape(-1)
+    importances = minmax.fit_transform(estimator.feature_importances_.reshape(-1,1)).reshape(-1)
     indices = np.argsort(importances)[-30:]
 
     plt.figure(figsize=(12,10))

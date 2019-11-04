@@ -6,7 +6,6 @@ import numpy as np
 from joblib import load, dump
 from src import utils as ut
 
-
 from sklearn.impute import SimpleImputer
 from sklearn.decomposition import IncrementalPCA
 from sklearn.pipeline import Pipeline
@@ -46,6 +45,11 @@ def get_email_based_features(dftrain, dftest):
         
         dfout_dict[dataset] = dfout
         
+    # Frequency encode columns
+    col_list = ['P_emaildomain_company', 'R_emaildomain_company', 'P_emailco-R_emailco' ]
+    dfout_dict['train'], dfout_dict['test'] =  ut.frequency_encode(dfout_dict['train'], 
+                                                                   dfout_dict['test'], 
+                                                                   col_list)
     
     return dfout_dict['train'], dfout_dict['test']
 
@@ -80,6 +84,14 @@ def get_device_based_features(dftrain, dftest):
         dfout['DeviceFeaturesInt'] = ut.create_category_interactions(dfin, ['DeviceType','DeviceInfo'])
 
         dfout_dict[dataset] = dfout
+        
+        
+    # Frequency encode columns
+    col_list = ['DeviceFeaturesInt', 'StatedBrand']
+    dfout_dict['train'], dfout_dict['test'] =  ut.frequency_encode(dfout_dict['train'], 
+                                                                   dfout_dict['test'], 
+                                                                   col_list)
+        
         
     return dfout_dict['train'], dfout_dict['test']
 
@@ -160,6 +172,12 @@ def get_misc_interaction_features(dftrain, dftest):
         
         dfout_dict[dataset] = dfout
         
+    # Frequency encode columns
+    col_list = ['addr2-R_emaildomain-P_emaildomain', 'product-card4-card6', 'addr2-addr1']
+    dfout_dict['train'], dfout_dict['test'] =  ut.frequency_encode(dfout_dict['train'], 
+                                                                   dfout_dict['test'], 
+                                                                   col_list)
+        
     return dfout_dict['train'], dfout_dict['test']
 
 
@@ -222,6 +240,12 @@ def get_proxyid1_based_features(dftrain, dftest):
         dfout['card_group_int'] = ut.create_category_interactions(dfin, id_key_cols)
 
         dfout_dict[dataset] = dfout
+        
+    # Frequency encode columns
+    col_list = ['card_group_int']
+    dfout_dict['train'], dfout_dict['test'] =  ut.frequency_encode(dfout_dict['train'], 
+                                                                   dfout_dict['test'], 
+                                                                   col_list)
         
     
     return dfout_dict['train'], dfout_dict['test']
@@ -432,8 +456,107 @@ def get_preprocessed_features(dftrain, dftest, dftrain_fs1, dftest_fs1):
     return train, test, target
 
 
+
+def get_counts_features(dftrain, dftest):
+    """
     
-   
+    """
+    dfin_dict = {'train': dftrain, 'test': dftest}
+    dfout_dict = {}
+    
+    for dataset in dfin_dict:
+        
+        dfin = dfin_dict[dataset]
+    
+        dfout = pd.DataFrame(index=dfin.index)
+
+        
+            
+        
+        dfout_dict[dataset] = dfout
+        
+    # Frequency encode columns
+    col_list = [ ]
+    dfout_dict['train'], dfout_dict['test'] =  ut.frequency_encode(dfout_dict['train'], 
+                                                                   dfout_dict['test'], 
+                                                                   col_list)
+    
+    return dfout_dict['train'], dfout_dict['test']
+
+
+def get_match_features(dftrain, dftest):
+    """
+    
+    """
+    dfin_dict = {'train': dftrain, 'test': dftest}
+    dfout_dict = {}
+     
+    card_cols = ['card3', 'card4']
+    match_features = ['M1', 'M2', 'M3', 'M4' ,'M5', 'M6', 'M7', 'M8', 'M9']
+    subcols =  card_cols + match_features
+    
+    for dataset in dfin_dict:
+        
+        dfin = dfin_dict[dataset]
+    
+        dfout = dfin.loc[:,card_cols + match_features]
+        
+        dfout.fillna('NA', inplace=True)
+        dfout['M1-3'] = ut.create_category_interactions(dfout, ['M1', 'M2', 'M3'])
+        dfout['M5-6'] = ut.create_category_interactions(dfout, ['M5', 'M6'])
+        dfout['M7-9'] = ut.create_category_interactions(dfout, ['M7', 'M8', 'M9'])
+        dfout['card34_M4-6'] = ut.create_category_interactions(dfout, ['card3', 'card4'] + ['M4','M5','M6'])
+
+        dfout.drop(columns= card_cols + match_features, inplace=True)
+        dfout_dict[dataset] = dfout
+    
+    # Frequency encode columns
+    col_list = ['M1-3','M5-6','M7-9', 'card34_M4-6']
+    dfout_dict['train'], dfout_dict['test'] =  ut.frequency_encode(dfout_dict['train'], 
+                                                                   dfout_dict['test'], 
+                                                                   col_list)
+    
+    return dfout_dict['train'], dfout_dict['test']
+
+
+def get_counts_features(dftrain, dftest):
+    """
+    Get counts based features.
+    """
+    dfin_dict = {'train': dftrain, 'test': dftest}
+    dfout_dict = {}
+     
+        
+    card_cols = dftrain.columns[dftrain.columns.str.contains('card')].tolist()
+    counts_cols = dftrain.columns[dftrain.columns.str.contains(r'C\d+$')].tolist()
+    
+    for dataset in dfin_dict:
+        
+        dfin = dfin_dict[dataset]
+    
+        dfout = dfin.loc[:, card_cols + counts_cols]
+        
+        na_filler = {'card3':-999, 'card4':'NA', 'card6':'NA'}
+        groupobj = dfout.fillna(na_filler).groupby(['card3','card4','card6'])
+        
+        for col in counts_cols:
+            dfout[col+'_card346median'] = groupobj[col].transform(np.median).fillna(-99)
+
+            dfout[col+'_sub_card346median'] = (dfout[col] - groupobj[col].transform(np.median)).fillna(-99)
+
+            dfout[col+'_card346_5quantile'] = groupobj[col].transform(np.quantile, q=0.05).fillna(-99)
+
+            dfout[col+'_card346_95quantile'] = groupobj[col].transform(np.quantile, q=0.95).fillna(-99)
+            
+        dfout['card346groupsize'] = groupobj['C1'].transform('count')/dfout.shape[0]
+
+        dfout.drop(columns= card_cols + counts_cols, inplace=True)
+        dfout_dict[dataset] = dfout
+    
+    return dfout_dict['train'], dfout_dict['test']
+    
+
+ 
     
 
     

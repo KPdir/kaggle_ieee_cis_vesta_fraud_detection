@@ -26,12 +26,12 @@ def drop_single_valued_and_highly_null_cols(dftrain, dftest,
                                             null_thresh = 0.95,
                                             single_value_thresh = 0.95):
     
-    # single valued cols
+    # Single valued cols
     single_value_cols_train = [col for col in dftrain.columns if dftrain[col].nunique() <= 1]
     single_value_cols_test = [col for col in dftest.columns if dftest[col].nunique() <= 1]
 
     
-    # highly null cols
+    # Highly null cols
     highly_null_cols_train = [col for col in dftrain.columns if dftrain[col].isnull().sum() \
                                                                   / dftrain.shape[0] >= null_thresh]
     highly_null_cols_test = [col for col in dftest.columns if dftest[col].isnull().sum() \
@@ -80,7 +80,7 @@ def fill_na_general(dftrain, dftest):
             else:
                 na_value = -9999
             
-            # change dtype with float or int appropriately
+            # Change dtype with float or int appropriately
             if (col_dtype == 'float'):
                 na_value = float(na_value) 
             elif(col_dtype == 'int'):
@@ -90,7 +90,6 @@ def fill_na_general(dftrain, dftest):
         dftest[col] = dftest[col].fillna(na_value)
         
     return dftrain, dftest
-
 
 
 def labelencode_categorical(dftrain, dftest):
@@ -105,3 +104,73 @@ def labelencode_categorical(dftrain, dftest):
             dftest[col] = labenc.transform(dftest[col])  
     
     return dftrain, dftest
+
+
+# CV scheme
+def get_cv_object(train):
+    """
+    Return Time Based CV Object. 
+    Time based CV scheme: {train month(s) - test month}
+                            {1}-{2}
+                            {1,2}-{3}
+                            {1,2,3}-{4}
+                            {1,2,3,4}-{5,6}    
+    """
+    tx_month = train['DayNumber']//30
+    
+    d = {}
+
+    for fold in range(5):
+        if (fold == 4):
+            break
+        elif (fold == 3):
+            d['fold_'+str(fold)+'_train'] = tx_month.loc[(tx_month <= fold)].index
+            d['fold_'+str(fold)+'_test'] = tx_month.loc[(tx_month > fold + 1)].index
+        else: 
+            d['fold_'+str(fold)+'_train'] = tx_month.loc[(tx_month <= fold)].index
+            d['fold_'+str(fold)+'_test'] = tx_month.loc[(tx_month == fold+2)].index
+            
+    
+    cvobj = [ (d['fold_' + str(fold) + '_train'], d['fold_' + str(fold) + '_test']) for fold in range(4)]
+    
+    return cvobj
+
+# Frequency encode columns
+def frequency_encode(dftrain, dftest, columnlist, output_type="include"):
+    """
+    Frequency encode columns in columnlist.
+    
+    Parameters:
+        dftrain: [DataFrame] train set
+        dftest: [DataFrame] test set
+        columnlist: [list] columns to encode.
+        output_type: [str], default="include" will include the columns in the same dataframes. 
+                     If "separate", returns separate dataframes.
+    
+    Returns:
+        dftrain_freq: [DataFrame] train 
+        dftest_freq: [DataFrame] test
+       
+    Author: kmp    
+    """
+    
+    if output_type is "include":
+        for col in columnlist:
+            col_freqs = dftrain.fillna({col:'NA'})[col].value_counts(normalize=True) 
+            dftrain[col+'_freq'] = dftrain.fillna({col:'NA'})[col].map(col_freqs)
+            dftest[col+'_freq'] = dftest.fillna({col:'NA'})[col].map(col_freqs).fillna(0)
+       
+        dftrain_freq = dftrain
+        dftest_freq =  dftest
+        
+    else:
+        dftrain_freq = pd.DataFrame(index=dftrain.index)
+        dftest_freq =  pd.DataFrame(index=dftest.index)
+
+        for col in columnlist:
+            col_freqs = dftrain.fillna({col:'NA'})[col].value_counts(normalize=True) 
+            dftrain_freq[col+'_freq'] = dftrain.fillna({col:'NA'})[col].map(col_freqs)
+            dftest_freq[col+'_freq'] = dftest.fillna({col:'NA'})[col].map(col_freqs).fillna(0)
+            
+    return dftrain_freq, dftest_freq
+    
